@@ -1,6 +1,6 @@
 ---
 title: "Dashboards for Clicker Data"
-author: '[[ADD YOUR NAME, CORNELL ID]]'
+author: '[[Tianran Song, ts667]]'
 subtitle: INFO 4100 Learning Analytics
 output:
   word_document: default
