@@ -1,6 +1,10 @@
 ---
 title: "Dashboards for Clicker Data"
+<<<<<<< HEAD
 author: '[[ADD YOUR NAME, CORNELL ID]]'
+=======
+author: '[[Tianran Song ts667, Ming Xu mx235]]'
+>>>>>>> ec2a0cf4b56a9182e1270384ee957af619451685
 subtitle: INFO 4100 Learning Analytics
 output:
   word_document: default
