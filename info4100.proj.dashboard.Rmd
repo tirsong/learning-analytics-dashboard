@@ -65,10 +65,8 @@ library(tidyverse)
 # Below you are loading 2 new packages:shiny + shinydashboard.
 # Install them once, then comment out the install command.
 
-# install.packages("shiny")
 library(shiny)
 
-# install.packages("shinydashboard")
 library(shinydashboard)
 library(fmsb)
 
@@ -89,32 +87,16 @@ Go through the planning / sketching process described in the reading about dashb
 *Planning for the student dashboard*
 
 -   For whom? Who will use it and what is their background?
-    -   [add your answer here]
-    -   [add your answer here]
 -   Why? What is the goal? What questions to answer?
-    -   [add your answer here]
-    -   [add your answer here]
 -   What? What data to show and what is its structure?
-    -   [add your answer here]
-    -   [add your answer here]
 -   How? How will visualizations support the goal?
-    -   [add your answer here]
-    -   [add your answer here]
 
 *Planning for the teacher dashboard*
 
 -   For whom? Who will use it and what is their background?
-    -   [add your answer here]
-    -   [add your answer here]
 -   Why? What is the goal? What questions to answer?
-    -   [add your answer here]
-    -   [add your answer here]
 -   What? What data to show and what is its structure?
-    -   [add your answer here]
-    -   [add your answer here]
 -   How? How will visualizations support the goal?
-    -   [add your answer here]
-    -   [add your answer here]
 
 **Question 2:** Based on your plan above, make a sketch of what the dashboard would look like. See this week's readings for examples. Be detailed about what kinds of data points and visualizations you want to see in different parts of the page. Consider the user experience and how you should position more general information compared to more specific information, and where you may need some additional explanation to help the viewer understand a graphic, for example. In your sketch, it is useful to give labels to different objects, because in the steps below you can split up work between team members and the labels will help you connect the UI with the data objects. Show your sketches in section to get feedback from the teaching team.
 
