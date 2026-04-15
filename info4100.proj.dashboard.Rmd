@@ -65,8 +65,10 @@ library(tidyverse)
 # Below you are loading 2 new packages:shiny + shinydashboard.
 # Install them once, then comment out the install command.
 
+#install.packages("shiny")
 library(shiny)
 
+#install.packages("shinydashboard")
 library(shinydashboard)
 library(fmsb)
 
@@ -87,16 +89,48 @@ Go through the planning / sketching process described in the reading about dashb
 *Planning for the student dashboard*
 
 -   For whom? Who will use it and what is their background?
+    -  Students who are currently taking the CS class and want to see their 
+    progress in the class. 
+    - As this is a class for Business intelligence, they may have some business 
+    knowledge/likely have an interest in the intersection between business and 
+    CS 
 -   Why? What is the goal? What questions to answer?
+    -   The goal of this dashboard is to show the student how they are 
+    performing in the class, specifically relative to their peers.
+    - it also will show the students their progress in the class to show how 
+    their skills/knowledge have improved over their time in the course. 
 -   What? What data to show and what is its structure?
+    -   These will be specific to each individual, and shows an overview of 
+    their engagement and performance on the material, relative to other students. 
 -   How? How will visualizations support the goal?
+    - The student dashboard will show which topics they have already mastered and
+    which topics they should spend extra time understanding. 
+    - A potential visualization could be a progress chart that shows how many 
+    questions the student answered correctly for a specific topic. 
 
 *Planning for the teacher dashboard*
+gain insights about her students and how they are engaging/performing in order to better help them in class. She would also like to better support students by giving them feedback at scale about where they stand and perhaps how they compare to others in the class.
 
 -   For whom? Who will use it and what is their background?
+    -   College instructor who uses iClickers in her CS class on Business Intelligence
+    -   From the experience dataset, it seems like the class is focused on sql 
+    queries, ETL development, programming skills, gathering customer requirements, so 
+    we expect the instructor to have a strong background in programming specifically related to 
+  supporting client services. 
 -   Why? What is the goal? What questions to answer?
+    -   The goal is to display the progress of the class so the instructor can gain 
+    insights about how the students are engaging/performing
+    -   To support student learning and reinforce their progress, the instructor wants 
+    to provide feedback at scale, answering questions like which topics need more coverage, 
+    which students are struggling the most
 -   What? What data to show and what is its structure?
+    -  The data we will show for the teacher dashboard is an overview of the 
+    class characteristics, engagement and student performance. 
+    -  percentage of student engagement in material, student scores on quizzes, attendance in lecture, answered iclicker percentage, etc.  
 -   How? How will visualizations support the goal?
+    -   The teacher dashboard will show updated data on her students and can adapt
+    their lesson plans to better engage and support the student learning. 
+    -   A potential visualization could be a bar chart of multiple lecture dates where iclicker questions were asked, and one column chart is the total questions asked, and one column chart is the number of students that answered it correctly. This will support the instructor because it will give direct feedback on which questions the class struggled with as a whole, and can adjust her next lecture to review the concept the students didn't understand. 
 
 **Question 2:** Based on your plan above, make a sketch of what the dashboard would look like. See this week's readings for examples. Be detailed about what kinds of data points and visualizations you want to see in different parts of the page. Consider the user experience and how you should position more general information compared to more specific information, and where you may need some additional explanation to help the viewer understand a graphic, for example. In your sketch, it is useful to give labels to different objects, because in the steps below you can split up work between team members and the labels will help you connect the UI with the data objects. Show your sketches in section to get feedback from the teaching team.
 
