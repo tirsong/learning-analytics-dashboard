@@ -1,6 +1,6 @@
 ---
 title: "Dashboards for Clicker Data"
-author: '[[Tianran Song, ts667]]'
+author: '[[ADD YOUR NAME, CORNELL ID]]'
 subtitle: INFO 4100 Learning Analytics
 output:
   word_document: default
@@ -70,10 +70,14 @@ library(shiny)
 
 # install.packages("shinydashboard")
 library(shinydashboard)
+library(fmsb)
 
 # This should load the datasets: 
 # experience (123 by 11) and quiz (2423 by 13)
 load("info4100.proj.dashboard.rda")
+
+#install.packages("fmsb")
+
 ```
 
 # Part 1: Planning / Sketching
@@ -128,35 +132,110 @@ Your team can split up the tasks. Some work on creating the UI (this part), whil
 #######################################
 ####### BEGIN INPUT: Question 3 #######
 #######################################
-# Example of a tab (i.e. page)
+
 instructor_dash = tabItem(
-    tabName = "instructor",
-    h2("Instructor Dashboard"),
+  tabName = "instructor",
+  h2("Instructor Dashboard"),
+  
+  tabBox(width = 12, id = "inst_tabs",
     
-    # Dynamic infoBoxes
-    fluidRow(
-      infoBoxOutput("inst.info1"),
-      infoBoxOutput("inst.info2")
+    tabPanel("Class Overview",
+             fluidRow(
+               infoBoxOutput("inst.info1"),
+               infoBoxOutput("inst.info2"),
+               infoBoxOutput("inst.click_acc"),
+               infoBoxOutput("inst.avg_quiz")
+             ),
+             
+             fluidRow(
+               # Using 'status' adds the color strip to the title
+               box(title = "Quiz Performance Trends", width = 6, status = "primary", solidHeader = TRUE,
+                   plotOutput("inst.dist", height = 350)),
+               box(title = "Class Sentiment Analysis", width = 6, status = "danger", solidHeader = TRUE,
+                   plotOutput("inst.sentiment", height = 350))
+             ),
+             
+             fluidRow(
+               box(title = "Engagement vs. Performance", width = 12, status = "info", solidHeader = TRUE,
+                   plotOutput("inst.scatter", height = 400))
+             )
     ),
-    # Any visualization
-    fluidRow(
-        box(
-            title = "Box 1",
-            plotOutput("inst.plot1", height = 250)
-        ),
-        box(
-            title = "Box 2",
-            plotOutput("inst.plot2", height = 250)
-        )
+    
+    tabPanel("Quiz Details",
+             fluidRow(
+               box(title = "Quiz Selection", width = 12, status = "warning", solidHeader = TRUE,
+                   selectInput("quiz_select", "Quiz Number:", choices = 1:10))
+             ),
+             fluidRow(
+               valueBoxOutput("quiz.mean", width = 4),
+               valueBoxOutput("quiz.median", width = 4),
+               valueBoxOutput("quiz.sd", width = 4)
+             ),
+             fluidRow(
+               box(title = "2016", width = 4, status = "primary", plotOutput("quiz.plot2016")),
+               box(title = "2017", width = 4, status = "primary", plotOutput("quiz.plot2017")),
+               box(title = "2018", width = 4, status = "primary", plotOutput("quiz.plot2018"))
+             )
+    ),
+    
+    tabPanel("Student Information",
+             fluidRow(
+               box(title = "Experience Heatmap", width = 12, 
+                   "Placeholder for class-wide skill heatmap.")
+             )
     )
+  )
 )
 
-# Another empty tab
+# Student View (remains the same as fixed previously)
+# Updated Student Tab
 student_dash = tabItem(
   tabName = "student",
-  h2("Student Dashboard")
+  h2("Student Dashboard"),
+  
+  # 1. ADD THE DROPDOWN MENU HERE
+  fluidRow(
+    box(width = 12, 
+        selectInput("student_id", 
+                    "Select a Student ID to view their profile:", 
+                    choices = unique(quiz$STUDENT_KEY))
+    )
+  ),
+  
+  # 2. Add the dynamic infoBoxes (optional, if you still want them)
+  fluidRow(
+      infoBoxOutput("stu.info1"),
+      infoBoxOutput("stu.info2"),
+      infoBoxOutput("stu.info3")
+  ),
+  
+  # 3. Add the matching Plot Outputs
+  fluidRow(
+      box(
+          title = "Progress: Scores Over Time",
+          plotOutput("student.progress_score", height = 250)
+      ),
+      box(
+          title = "Progress: Confidence Over Time",
+          plotOutput("student.progress_sentiment", height = 250)
+      )
+  ),
+  
+  fluidRow(
+      box(
+          title = "Skill vs Performance",
+          plotOutput("student.skill_scatter", height = 300)
+      ),
+      box(
+          title = "Skill Profile",
+          plotOutput("student.spider", height = 300)
+      ),
+      box(
+          title = "iClicker Mastery",
+          plotOutput("student.mastery", height = 200)
+      )
+  )
 )
-
 #######################################
 #######################################
 ```
@@ -173,9 +252,52 @@ Use the space below to be ready for your information visualizations in the dashb
 #######################################
 ####### BEGIN INPUT             #######
 #######################################
+# --- Update in Part 3: Data Pre-processing ---
 
+# Use UPPERCASE to match the actual dataset
+skill_cols <- c("DATABASE_SCORE", "SQL_SCORE", "PROGRAMING_SCORE", 
+                "STORED_PROC_SCORE", "ETL_SCORE", "DATA_VIS_SCORE", 
+                "REQUIREMENT_GATHER_SCORE")
 
+# Calculate Class Average using uppercase names
+class_avg <- experience %>%
+  summarise(across(all_of(skill_cols), ~ mean(.x, na.rm = TRUE)))
 
+# Define the scale bounds (0-5)
+radar_bounds <- data.frame(
+  matrix(c(rep(5, 7), rep(0, 7)), nrow = 2, byrow = TRUE)
+)
+colnames(radar_bounds) <- skill_cols
+
+# --- Replace the sentiment_data block in Part 3 ---
+
+sentiment_data <- quiz %>%
+  inner_join(experience, by = c("STUDENT_KEY", "YEAR")) %>%
+  group_by(SESSION_NUMBER, YEAR) %>%
+  summarise(avg_sentiment = mean(AVG_T_CLICKER, na.rm = TRUE), .groups = 'drop') %>%
+  # Filter out missing values and convert YEAR to a factor for distinct lines
+  filter(!is.na(avg_sentiment)) %>%
+  mutate(YEAR = as.factor(YEAR))
+
+# --- Replace the dist_data block in Part 3 ---
+
+# Calculate the average score per quiz, per year
+trend_data <- quiz %>%
+  inner_join(experience, by = c("STUDENT_KEY", "YEAR")) %>%
+  group_by(QUIZ_NUMBER, YEAR) %>%
+  summarise(mean_score = mean(QUIZ_SCORE, na.rm = TRUE), .groups = 'drop') %>%
+  mutate(YEAR = as.factor(YEAR))
+
+# --- Add these to Part 3 ---
+
+# 1. Average iClicker Accuracy
+# We calculate this by taking the total correct divided by total completed
+avg_clicker_acc <- quiz %>%
+  summarise(acc = sum(CORRECT_Q_CLICKER, na.rm = TRUE) / sum(COMPLETED_Q_CLICKER, na.rm = TRUE)) %>%
+  pull(acc)
+
+# 2. Average Quiz Score
+avg_quiz_stat <- mean(quiz$QUIZ_SCORE, na.rm = TRUE)
 #######################################
 #######################################
 ```
@@ -188,51 +310,214 @@ This is where you create the content for the wire frames you created above. Agai
 
 ```{r}
 server = function(input, output) {
-    
 #######################################
 ####### BEGIN INPUT: Question 4 #######
 #######################################
     
+    # --- INSTRUCTOR BOXES ---
     output$inst.info1 = renderInfoBox({
-        infoBox("Students total", 
-                length(unique(quiz$STUDENT_KEY)), 
-                icon = icon("list"), color = "purple")
+        infoBox("Students total", length(unique(quiz$STUDENT_KEY)), 
+                icon = icon("users"), color = "purple")
     })
     
     output$inst.info2 = renderInfoBox({
-        infoBox("Attendance",
-                paste0(round(100 * mean(quiz$ATTENDED)), "%"), 
-                icon = icon("list"), color = "yellow")
+        infoBox("Attendance", paste0(round(100 * mean(quiz$ATTENDED)), "%"), 
+                icon = icon("calendar-check"), color = "yellow")
     })
     
-    output$inst.plot1 = renderPlot({
-        hist(quiz$QUIZ_SCORE)
+    output$inst.click_acc = renderInfoBox({
+        acc = sum(quiz$CORRECT_Q_CLICKER, na.rm = TRUE) / sum(quiz$COMPLETED_Q_CLICKER, na.rm = TRUE)
+        infoBox("Clicker Accuracy", paste0(round(100 * acc), "%"), 
+                icon = icon("check-circle"), color = "green")
     })
     
-    output$inst.plot2 = renderPlot({
-        # I'm giving you three examples here
-        # only the last one will be displayed
-        # but you can try out each one.
-        # As you can see, using ggplot allows you to 
-        # make much better-looking visualizations.
-      
-        # simple
-        hist(quiz$TOTAL_COMPLETED_CLICKER) 
-      
-        # using ggplot
-        ggplot(quiz, aes(TOTAL_COMPLETED_CLICKER)) + 
-          geom_histogram()
+    output$inst.avg_quiz = renderInfoBox({
+        infoBox("Avg Quiz Score", round(mean(quiz$QUIZ_SCORE, na.rm = TRUE), 1), 
+                icon = icon("graduation-cap"), color = "blue")
+    })
+    
+    # NEW: Engagement vs Performance Scatter Plot
+    output$inst.scatter = renderPlot({
+        ggplot(quiz, aes(x = TOTAL_COMPLETED_CLICKER, y = QUIZ_SCORE)) +
+          # Use geom_jitter to prevent points from overlapping exactly
+          geom_jitter(alpha = 0.5, color = "#1c86ee") + 
+          # Add a linear trend line
+          geom_smooth(method = "lm", color = "red", se = FALSE) +
+          labs(x = "iClicker Questions Completed", 
+               y = "Quiz Score (0-20)",
+               title = "Correlation: Participation vs. Achievement") +
+          theme_minimal()
+    })
+    
+    # 1. Performance Trend Plot
+    output$inst.dist = renderPlot({
+        ggplot(trend_data, aes(x = QUIZ_NUMBER, y = mean_score, color = YEAR, group = YEAR)) +
+          geom_line(size = 1.2) + geom_point(size = 3) +
+          scale_x_continuous(breaks = 1:10) +
+          scale_y_continuous(limits = c(0, 20)) +
+          theme_minimal() + labs(title = "Avg Quiz Scores")
+    })
+
+# --- UPDATED SENTIMENT CHART ---
+    output$inst.sentiment = renderPlot({
+        ggplot(sentiment_data, aes(x = SESSION_NUMBER, y = avg_sentiment, color = YEAR, group = YEAR)) +
+          # 1. Add the shaded "Danger Zone" area
+          annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0, ymax = 2.5, 
+                   fill = "red", alpha = 0.1) +
+          # 2. Add the critical threshold line
+          geom_hline(yintercept = 2.5, linetype = "dashed", color = "red", size = 1) +
+          # 3. Add a label for the line
+          annotate("text", x = 1, y = 2.7, label = "Critical Temperature", 
+                   color = "red", fontface = "italic", hjust = 0) +
+          geom_line(size = 1) + 
+          geom_point() +
+          scale_y_continuous(limits = c(0, 5)) +
+          labs(title = "Class Sentiment (1-5 Scale)", y = "Avg Temperature")
+    })
+
+    
+    # 1. Reactive Data: Filters the quiz data based on the dropdown
+    selected_quiz_data <- reactive({
+        quiz %>% filter(QUIZ_NUMBER == input$quiz_select)
+    })
+
+    # 2. Stats: Mean
+    output$quiz.mean = renderValueBox({
+        df <- selected_quiz_data()
+        valueBox(round(mean(df$QUIZ_SCORE, na.rm = TRUE), 2), "Average Score", icon = icon("calculator"), color = "blue")
+    })
+
+    # 3. Stats: Median
+    output$quiz.median = renderValueBox({
+        df <- selected_quiz_data()
+        valueBox(median(df$QUIZ_SCORE, na.rm = TRUE), "Median Score", icon = icon("dot-circle"), color = "aqua")
+    })
+
+    # 4. Stats: Standard Deviation
+    output$quiz.sd = renderValueBox({
+        df <- selected_quiz_data()
+        valueBox(round(sd(df$QUIZ_SCORE, na.rm = TRUE), 2), "Std. Deviation", icon = icon("arrows-alt-h"), color = "navy")
+    })
+
+    # 5. Histograms for each year
+    # We create a helper function to keep the code clean
+    render_quiz_hist <- function(year_label, bar_color) {
+        renderPlot({
+            df <- selected_quiz_data() %>% filter(YEAR == year_label)
+            # Check if data exists for that year to avoid errors
+            validate(need(nrow(df) > 0, paste("No data for", year_label)))
+            
+            ggplot(df, aes(x = QUIZ_SCORE)) +
+                geom_histogram(binwidth = 1, fill = bar_color, color = "white") +
+                scale_x_continuous(limits = c(0, 21)) +
+                labs(x = "Score", y = "Count") +
+                theme_minimal()
+        })
+    }
+
+    output$quiz.plot2016 = render_quiz_hist(2016, "#66c2a5")
+    output$quiz.plot2017 = render_quiz_hist(2017, "#fc8d62")
+    output$quiz.plot2018 = render_quiz_hist(2018, "#8da0cb")
+
+    # --- STUDENT PLOTS ---
+    
+    # Reactive block for individual student quiz data to prevent repetitive filtering
+    student_quiz_data <- reactive({
+        req(input$student_id)
+        quiz %>% 
+          filter(STUDENT_KEY == input$student_id) %>%
+          group_by(QUIZ_NUMBER) %>%
+          summarize(
+              QUIZ_SCORE = mean(QUIZ_SCORE, na.rm = TRUE),
+              AVG_T_CLICKER = mean(AVG_T_CLICKER, na.rm = TRUE)
+          )
+    })
+
+    # 1. Progress: Line chart quiz scores over time
+    output$student.progress_score = renderPlot({
+        df <- student_quiz_data()
+        validate(need(nrow(df) > 0, "No quiz data available for this student."))
         
-        # using ggplot to make it clearer
-        ggplot(quiz, aes(x = TOTAL_COMPLETED_CLICKER)) + 
-          geom_density(fill="gray") + # makes the density line and gray fill
-          labs(x = "Completed Clicker Questions", y = "Density") + # change axis labels
-          theme_classic() # to use white background
+        ggplot(df, aes(x = factor(QUIZ_NUMBER), y = QUIZ_SCORE, group = 1)) +
+            geom_line(color = "#1c86ee", size = 1.2) +
+            geom_point(color = "#1c86ee", size = 3) +
+            scale_y_continuous(limits = c(0, 20)) +
+            labs(title = "Your Quiz Scores Over Time", x = "Quiz Number", y = "Score (0-20)") +
+            theme_minimal()
+    })
+
+    # 2. Progress: Line chart confidence/sentiment over time
+    output$student.progress_sentiment = renderPlot({
+        df <- student_quiz_data()
+        validate(need(nrow(df) > 0, "No sentiment data available for this student."))
+        
+        ggplot(df, aes(x = factor(QUIZ_NUMBER), y = AVG_T_CLICKER, group = 1)) +
+            geom_line(color = "#fc8d62", size = 1.2) +
+            geom_point(color = "#fc8d62", size = 3) +
+            scale_y_continuous(limits = c(0, 5)) +
+            labs(title = "Your Confidence/Sentiment Over Time", x = "Quiz Number", y = "Avg Temperature (0-5)") +
+            theme_minimal()
+    })
+
+    # 3. Performance: Scatter Plot - Self reported skills vs actual performance
+    output$student.skill_scatter = renderPlot({
+        req(input$student_id)
+        
+        # Aggregate class data to get avg quiz score per student, then join with their experience surveys
+        class_perf <- quiz %>%
+            group_by(STUDENT_KEY) %>%
+            summarize(avg_quiz = mean(QUIZ_SCORE, na.rm = TRUE)) %>%
+            left_join(experience, by = "STUDENT_KEY") %>%
+            filter(!is.na(sql_score)) # Using SQL as the example skill
+            
+        # Isolate the specific student to highlight them on the plot
+        student_pt <- class_perf %>% filter(STUDENT_KEY == input$student_id)
+        
+        ggplot(class_perf, aes(x = sql_score, y = avg_quiz)) +
+            geom_jitter(alpha = 0.3, color = "gray", width = 0.2, height = 0) + # class background
+            geom_point(data = student_pt, aes(x = sql_score, y = avg_quiz), color = "red", size = 5) + # Highlight student
+            labs(title = "Expectation vs Reality: SQL Skill vs Overall Performance",
+                 x = "Self-Reported SQL Score (0-5)", 
+                 y = "Average Quiz Score") +
+            theme_minimal()
     })
     
-#######################################
-#######################################
+    # 4. Performance: Spider/Radar Chart
+    output$student.spider = renderPlot({
+        req(input$student_id)
+        student_data <- experience %>%
+          filter(STUDENT_KEY == input$student_id) %>%
+          select(all_of(skill_cols))
+        
+        radar_df <- rbind(radar_bounds, class_avg, student_data)
+        
+        radarchart(radar_df, axistype = 1, pcol = c("#cccccc", "#1c86ee"), 
+                   plwd = c(2, 4), plty = c(2, 1),
+                   pfcol = c(rgb(0.8, 0.8, 0.8, 0.2), rgb(0.1, 0.5, 0.8, 0.4)),
+                   vlabels = c("DB", "SQL", "Prog", "StoredProc", "ETL", "DataViz", "Reqs"))
+    })
     
+    # 5. Performance: Mastery Bar
+    output$student.mastery = renderPlot({
+        req(input$student_id)
+        mastery_data <- quiz %>%
+          filter(STUDENT_KEY == input$student_id) %>%
+          summarise(total_correct = sum(CORRECT_Q_CLICKER, na.rm = TRUE),
+                    total_possible = sum(TOTAL_POSSIBLE_CLICKER, na.rm = TRUE)) %>%
+          mutate(pct = ifelse(total_possible > 0, total_correct / total_possible, 0))
+
+        bar_color <- if (mastery_data$pct < 0.30) "purple" else if (mastery_data$pct < 0.70) "#ffc107" else "#28a745"
+
+        ggplot(mastery_data) +
+          geom_rect(aes(xmin = 0, xmax = 1, ymin = 0.4, ymax = 0.6), fill = "#e9ecef") +
+          geom_rect(aes(xmin = 0, xmax = pct, ymin = 0.4, ymax = 0.6), fill = bar_color) +
+          annotate("text", x = 0.5, y = 0.7, label = paste0(round(mastery_data$pct * 100), "% Mastery"), 
+                   size = 8, fontface = "bold") +
+          theme_void() + coord_cartesian(xlim = c(0, 1), ylim = c(0, 1))
+    })
+
+#######################################
+#######################################
 }
 ```
 
@@ -247,29 +532,29 @@ You should be able to simply run the code below **as is** to see your dashboard.
 ### This code creates the dashboard ###
 #######################################
 
-# Here we set up the Header of the dashboard
+# Set up Header
 dhead = dashboardHeader(title = "Clicker Dashboard")
 
-# Here set up the sidebar which has links to two pages
+# Set up Sidebar
 dside = dashboardSidebar(
   sidebarMenu(
     menuItem("Instructor View", tabName = "instructor", icon = icon("dashboard")),
-    menuItem("Student View", tabName = "student", icon = icon("th"))
+    menuItem("Student View", tabName = "student", icon = icon("user"))
   )
 )
 
-# Here we set up the body of the dashboard
+# Set up Body (Assembling the tabs defined in Q3)
 dbody = dashboardBody(
-    tabItems(
-      student_dash,
-      instructor_dash
-    )
+  tabItems(
+    instructor_dash,
+    student_dash
+  )
 )
 
-# Combining header, sidebar, and body
+# Final UI Assembly
 ui = dashboardPage(dhead, dside, dbody)
 
-# Generating a local instance of your dashboard
+# Launch
 shinyApp(ui, server)
 ```
 
