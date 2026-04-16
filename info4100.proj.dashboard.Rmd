@@ -218,7 +218,7 @@ student_dash = tabItem(
     box(width = 12, 
         selectInput("student_id", 
                     "Select a Student ID to view their profile:", 
-                    choices = unique(quiz$STUDENT_KEY))
+                    choices = sort((unique(quiz$STUDENT_KEY))))
     )
   ),
   
@@ -480,6 +480,7 @@ server = function(input, output) {
     })
 
     # 3. Performance: Scatter Plot - Self reported skills vs actual performance
+    names(experience)
     output$student.skill_scatter = renderPlot({
         req(input$student_id)
         
@@ -488,14 +489,14 @@ server = function(input, output) {
             group_by(STUDENT_KEY) %>%
             summarize(avg_quiz = mean(QUIZ_SCORE, na.rm = TRUE)) %>%
             left_join(experience, by = "STUDENT_KEY") %>%
-            filter(!is.na(sql_score)) # Using SQL as the example skill
+            filter(!is.na(SQL_SCORE)) # Using SQL as the example skill
             
         # Isolate the specific student to highlight them on the plot
         student_pt <- class_perf %>% filter(STUDENT_KEY == input$student_id)
         
-        ggplot(class_perf, aes(x = sql_score, y = avg_quiz)) +
+        ggplot(class_perf, aes(x = SQL_SCORE, y = avg_quiz)) +
             geom_jitter(alpha = 0.3, color = "gray", width = 0.2, height = 0) + # class background
-            geom_point(data = student_pt, aes(x = sql_score, y = avg_quiz), color = "red", size = 5) + # Highlight student
+            geom_point(data = student_pt, aes(x = SQL_SCORE, y = avg_quiz), color = "red", size = 5) + # Highlight student
             labs(title = "Expectation vs Reality: SQL Skill vs Overall Performance",
                  x = "Self-Reported SQL Score (0-5)", 
                  y = "Average Quiz Score") +
@@ -580,8 +581,9 @@ shinyApp(ui, server)
 
 **Question 5:** Add screenshots of your group's dahsboards below using this syntax or simply add them to the Word document after knitting:
 
-![Dashboard Screenshot](example_dash.png)
-
+![Dashboard Screenshot](instructor_dash_overview.png)
+![Dashboard Screenshot](instructor_dash_quiz.png)
+![Dashboard Screenshot](student_dash.png)
 **Question 6:** Evaluate your group dashboard from the perspective of the instructor (teacher dashboard) and from the perspective of the student (student dashboard). What do you like about it, what would you change or add to it if you had more time?
 
 *Reflection for the student dashboard*
