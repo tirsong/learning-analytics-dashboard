@@ -1,10 +1,7 @@
 ---
 title: "Dashboards for Clicker Data"
 <<<<<<< HEAD
-author: '[[ADD YOUR NAME, CORNELL ID]]'
-=======
 author: '[[Tianran Song ts667, Ming Xu mx235]]'
->>>>>>> ec2a0cf4b56a9182e1270384ee957af619451685
 subtitle: INFO 4100 Learning Analytics
 output:
   word_document: default
@@ -161,10 +158,11 @@ instructor_dash = tabItem(
     
     tabPanel("Class Overview",
              fluidRow(
-               infoBoxOutput("inst.info1"),
-               infoBoxOutput("inst.info2"),
-               infoBoxOutput("inst.click_acc"),
-               infoBoxOutput("inst.avg_quiz")
+               # Added width = 3 to each so 3 * 4 = 12 columns
+               infoBoxOutput("inst.info1", width = 3),
+               infoBoxOutput("inst.info2", width = 3),
+               infoBoxOutput("inst.click_acc", width = 3),
+               infoBoxOutput("inst.avg_quiz", width = 3)
              ),
              
              fluidRow(
@@ -200,60 +198,60 @@ instructor_dash = tabItem(
     
     tabPanel("Student Information",
              fluidRow(
-               box(title = "Experience Heatmap", width = 12, 
-                   "Placeholder for class-wide skill heatmap.")
+               box(title = "Class Experience Heatmap", width = 12, status = "info", solidHeader = TRUE,
+                   plotOutput("inst.heatmap", height = "400px"))
              )
     )
   )
 )
 
-# Student View (remains the same as fixed previously)
 # Updated Student Tab
 student_dash = tabItem(
   tabName = "student",
   h2("Student Dashboard"),
   
-  # 1. ADD THE DROPDOWN MENU HERE
   fluidRow(
-    box(width = 12, 
+    box(width = 12, status = "primary", solidHeader = TRUE,
         selectInput("student_id", 
                     "Select a Student ID to view their profile:", 
-                    choices = sort((unique(quiz$STUDENT_KEY))))
+                    # Fixed missing parenthesis on sort unique
+                    choices = sort(unique(quiz$STUDENT_KEY)))
     )
   ),
   
-  # 2. Add the dynamic infoBoxes (optional, if you still want them)
-  fluidRow(
-      infoBoxOutput("stu.info1"),
-      infoBoxOutput("stu.info2"),
-      infoBoxOutput("stu.info3")
-  ),
-  
-  # 3. Add the matching Plot Outputs
-  fluidRow(
-      box(
-          title = "Progress: Scores Over Time",
-          plotOutput("student.progress_score", height = 250)
-      ),
-      box(
-          title = "Progress: Confidence Over Time",
-          plotOutput("student.progress_sentiment", height = 250)
-      )
-  ),
-  
-  fluidRow(
-      box(
-          title = "Skill vs Performance",
-          plotOutput("student.skill_scatter", height = 300)
-      ),
-      box(
-          title = "Skill Profile",
-          plotOutput("student.spider", height = 300)
-      ),
-      box(
-          title = "iClicker Mastery",
-          plotOutput("student.mastery", height = 200)
-      )
+  tabBox(width = 12, id = "student_tabs",
+    
+    # TAB 1: PROGRESS 
+    tabPanel("Progress Tracking",
+             fluidRow(
+               # Added width = 4 to ensure exact grid fit
+               infoBoxOutput("stu.info1", width = 4),
+               infoBoxOutput("stu.info2", width = 4),
+               infoBoxOutput("stu.info3", width = 4)
+             ),
+             fluidRow(
+               box(title = "Quiz Scores Over Time", width = 6, status = "info",
+                   plotOutput("student.progress_score", height = 300)),
+               box(title = "Confidence Over Time", width = 6, status = "info",
+                   plotOutput("student.progress_sentiment", height = 300))
+             )
+    ),
+    
+    # TAB 2: PERFORMANCE (Updated Layout)
+    tabPanel("Performance Profile",
+             # Row 1: Side-by-side plots
+             fluidRow(
+               box(title = "Skill Profile (Radar)", width = 6, status = "success", solidHeader = TRUE,
+                   plotOutput("student.spider", height = 350)),
+               box(title = "Skill vs. Performance", width = 6, status = "success", solidHeader = TRUE,
+                   plotOutput("student.skill_scatter", height = 350))
+             ),
+             # Row 2: Full-width Mastery Bar at the bottom
+             fluidRow(
+               box(title = "iClicker Mastery", width = 12, status = "warning", solidHeader = TRUE,
+                   plotOutput("student.mastery", height = 200))
+             )
+    )
   )
 )
 #######################################
@@ -333,8 +331,7 @@ server = function(input, output) {
 #######################################
 ####### BEGIN INPUT: Question 4 #######
 #######################################
-    
-    # --- INSTRUCTOR BOXES ---
+     # --- INSTRUCTOR BOXES ---
     output$inst.info1 = renderInfoBox({
         infoBox("Students total", length(unique(quiz$STUDENT_KEY)), 
                 icon = icon("users"), color = "purple")
@@ -376,6 +373,52 @@ server = function(input, output) {
           scale_x_continuous(breaks = 1:10) +
           scale_y_continuous(limits = c(0, 20)) +
           theme_minimal() + labs(title = "Avg Quiz Scores")
+    })
+    
+    output$inst.heatmap = renderPlot({
+        
+        # 1. Bulletproof Data Pre-processing
+        heatmap_data <- experience %>%
+            # Select any column containing "score" (ignores uppercase/lowercase)
+            select(contains("score", ignore.case = TRUE)) %>%
+            # Remove the total survey score column so it doesn't skew the heatmap
+            select(-contains("skill_survey", ignore.case = TRUE)) %>%
+            # Reshape the data
+            pivot_longer(cols = everything(), names_to = "Skill", values_to = "Score") %>%
+            # Remove NAs and force score to be a number
+            filter(!is.na(Score)) %>%
+            mutate(Score = as.numeric(Score)) %>%
+            # Count how many students chose each score for each skill
+            group_by(Skill, Score) %>%
+            summarise(Count = n(), .groups = 'drop')
+            
+        # 2. Safety Check: If the data is empty, print a message instead of a blank box
+        validate(
+            need(nrow(heatmap_data) > 0, "No valid skill survey data found to draw the heatmap.")
+        )
+        
+        # 3. Automatically clean up the labels (Turns "DATABASE_SCORE" into "Database")
+        heatmap_data <- heatmap_data %>%
+            mutate(
+                Skill = tolower(Skill),
+                Skill = gsub("_score", "", Skill),
+                Skill = gsub("_", " ", Skill),
+                # Capitalize the first letters for a nice UI
+                Skill = tools::toTitleCase(Skill) 
+            )
+        
+        # 4. Plot the heatmap
+        ggplot(heatmap_data, aes(x = factor(Score), y = Skill, fill = Count)) +
+            geom_tile(color = "white", size = 0.5) +
+            scale_fill_gradient(low = "#e0f3db", high = "#43a2ca", name = "Students") +
+            labs(x = "Self-Reported Score (0 = No Experience, 5 = Expert)", 
+                 y = NULL) +
+            theme_minimal() +
+            theme(
+                panel.grid = element_blank(),
+                axis.text.y = element_text(size = 11, face = "bold"),
+                axis.text.x = element_text(size = 11)
+            )
     })
 
 # --- UPDATED SENTIMENT CHART ---
@@ -434,6 +477,31 @@ server = function(input, output) {
                 theme_minimal()
         })
     }
+    
+    # --- SPECIFIC QUIZ DRILL-DOWN ---
+    
+    selected_quiz_data <- reactive({
+        req(input$quiz_select)
+        quiz %>% filter(QUIZ_NUMBER == input$quiz_select)
+    })
+
+    # Histogram Helper Function (THIS WAS MISSING!)
+    render_quiz_hist <- function(year_label, bar_color) {
+        renderPlot({
+            df <- selected_quiz_data() %>% filter(YEAR == year_label)
+            validate(need(nrow(df) > 0, paste("No data for", year_label)))
+            
+            ggplot(df, aes(x = QUIZ_SCORE)) +
+                geom_histogram(binwidth = 1, fill = bar_color, color = "white") +
+                scale_x_continuous(limits = c(0, 21)) +
+                labs(x = "Score", y = "Count") +
+                theme_minimal()
+        })
+    }
+
+    output$quiz.plot2016 = render_quiz_hist(2016, "#66c2a5")
+    output$quiz.plot2017 = render_quiz_hist(2017, "#fc8d62")
+    output$quiz.plot2018 = render_quiz_hist(2018, "#8da0cb")
 
     output$quiz.plot2016 = render_quiz_hist(2016, "#66c2a5")
     output$quiz.plot2017 = render_quiz_hist(2017, "#fc8d62")
@@ -441,7 +509,7 @@ server = function(input, output) {
 
     # --- STUDENT PLOTS ---
     
-    # Reactive block for individual student quiz data to prevent repetitive filtering
+   # --- STUDENT DATA REACTIVE ---
     student_quiz_data <- reactive({
         req(input$student_id)
         quiz %>% 
@@ -453,57 +521,29 @@ server = function(input, output) {
           )
     })
 
-    # 1. Progress: Line chart quiz scores over time
+    # --- TAB: PROGRESS TRACKING ---
+    
     output$student.progress_score = renderPlot({
         df <- student_quiz_data()
-        validate(need(nrow(df) > 0, "No quiz data available for this student."))
-        
         ggplot(df, aes(x = factor(QUIZ_NUMBER), y = QUIZ_SCORE, group = 1)) +
             geom_line(color = "#1c86ee", size = 1.2) +
             geom_point(color = "#1c86ee", size = 3) +
             scale_y_continuous(limits = c(0, 20)) +
-            labs(title = "Your Quiz Scores Over Time", x = "Quiz Number", y = "Score (0-20)") +
+            labs(x = "Quiz Number", y = "Score") +
             theme_minimal()
     })
 
-    # 2. Progress: Line chart confidence/sentiment over time
     output$student.progress_sentiment = renderPlot({
         df <- student_quiz_data()
-        validate(need(nrow(df) > 0, "No sentiment data available for this student."))
-        
         ggplot(df, aes(x = factor(QUIZ_NUMBER), y = AVG_T_CLICKER, group = 1)) +
             geom_line(color = "#fc8d62", size = 1.2) +
             geom_point(color = "#fc8d62", size = 3) +
             scale_y_continuous(limits = c(0, 5)) +
-            labs(title = "Your Confidence/Sentiment Over Time", x = "Quiz Number", y = "Avg Temperature (0-5)") +
+            labs(x = "Quiz Number", y = "Confidence Temp") +
             theme_minimal()
     })
 
-    # 3. Performance: Scatter Plot - Self reported skills vs actual performance
-    names(experience)
-    output$student.skill_scatter = renderPlot({
-        req(input$student_id)
-        
-        # Aggregate class data to get avg quiz score per student, then join with their experience surveys
-        class_perf <- quiz %>%
-            group_by(STUDENT_KEY) %>%
-            summarize(avg_quiz = mean(QUIZ_SCORE, na.rm = TRUE)) %>%
-            left_join(experience, by = "STUDENT_KEY") %>%
-            filter(!is.na(SQL_SCORE)) # Using SQL as the example skill
-            
-        # Isolate the specific student to highlight them on the plot
-        student_pt <- class_perf %>% filter(STUDENT_KEY == input$student_id)
-        
-        ggplot(class_perf, aes(x = SQL_SCORE, y = avg_quiz)) +
-            geom_jitter(alpha = 0.3, color = "gray", width = 0.2, height = 0) + # class background
-            geom_point(data = student_pt, aes(x = SQL_SCORE, y = avg_quiz), color = "red", size = 5) + # Highlight student
-            labs(title = "Expectation vs Reality: SQL Skill vs Overall Performance",
-                 x = "Self-Reported SQL Score (0-5)", 
-                 y = "Average Quiz Score") +
-            theme_minimal()
-    })
-    
-    # 4. Performance: Spider/Radar Chart
+    # Radar Chart
     output$student.spider = renderPlot({
         req(input$student_id)
         student_data <- experience %>%
@@ -517,8 +557,26 @@ server = function(input, output) {
                    pfcol = c(rgb(0.8, 0.8, 0.8, 0.2), rgb(0.1, 0.5, 0.8, 0.4)),
                    vlabels = c("DB", "SQL", "Prog", "StoredProc", "ETL", "DataViz", "Reqs"))
     })
-    
-    # 5. Performance: Mastery Bar
+
+    # Scatter Plot (Now side-by-side with Radar)
+    output$student.skill_scatter = renderPlot({
+        req(input$student_id)
+        class_perf <- quiz %>%
+            group_by(STUDENT_KEY) %>%
+            summarize(avg_quiz = mean(QUIZ_SCORE, na.rm = TRUE)) %>%
+            left_join(experience, by = "STUDENT_KEY") %>%
+            filter(!is.na(SQL_SCORE))
+            
+        student_pt <- class_perf %>% filter(STUDENT_KEY == input$student_id)
+        
+        ggplot(class_perf, aes(x = SQL_SCORE, y = avg_quiz)) +
+            geom_jitter(alpha = 0.3, color = "gray", width = 0.2) + 
+            geom_point(data = student_pt, color = "red", size = 6) + 
+            labs(x = "Self-Reported SQL Score", y = "Avg Quiz Score") +
+            theme_minimal()
+    })
+
+    # Mastery Bar (Now full-width at the bottom)
     output$student.mastery = renderPlot({
         req(input$student_id)
         mastery_data <- quiz %>%
@@ -532,11 +590,11 @@ server = function(input, output) {
         ggplot(mastery_data) +
           geom_rect(aes(xmin = 0, xmax = 1, ymin = 0.4, ymax = 0.6), fill = "#e9ecef") +
           geom_rect(aes(xmin = 0, xmax = pct, ymin = 0.4, ymax = 0.6), fill = bar_color) +
-          annotate("text", x = 0.5, y = 0.7, label = paste0(round(mastery_data$pct * 100), "% Mastery"), 
+          annotate("text", x = 0.5, y = 0.5, label = paste0(round(mastery_data$pct * 100), "% Mastery"), 
                    size = 8, fontface = "bold") +
-          theme_void() + coord_cartesian(xlim = c(0, 1), ylim = c(0, 1))
+          theme_void()
     })
-
+    
 #######################################
 #######################################
 }
