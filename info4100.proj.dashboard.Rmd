@@ -624,6 +624,17 @@ dside = dashboardSidebar(
 
 # Set up Body (Assembling the tabs defined in Q3)
 dbody = dashboardBody(
+  tags$head(
+    tags$style(HTML("
+      .content-wrapper {
+        min-height: 100vh !important; 
+      }
+      
+      .content {
+        overflow: auto;
+      }
+    "))
+  ),
   tabItems(
     instructor_dash,
     student_dash
